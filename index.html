@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Калькулятор расхода топлива на 100 км</title>
+  <style>
+    :root {
+      --bg: #0f1420;
+      --card: #1b2333;
+      --text: #eef1f7;
+      --muted: #9aa3b5;
+      --accent: #4f8cff;
+      --accent-hover: #3f7bef;
+      --error: #ff6b6b;
+      --radius: 16px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(160deg, #0f1420 0%, #1a2236 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 16px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: clamp(1.3rem, 4vw, 1.8rem);
+      font-weight: 700;
+    }
+
+    header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 6px;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+      padding: 28px 24px;
+    }
+
+    .field {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      color: var(--text);
+      background: #131a29;
+      border: 1px solid #2b354d;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    input.invalid {
+      border-color: var(--error);
+    }
+
+    .error {
+      display: none;
+      color: var(--error);
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }
+
+    .error.visible {
+      display: block;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:hover {
+      background: var(--accent-hover);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .result {
+      margin-top: 20px;
+      padding: 16px;
+      text-align: center;
+      background: #131a29;
+      border-radius: 12px;
+      display: none;
+    }
+
+    .result.visible {
+      display: block;
+    }
+
+    .result .value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .result .unit {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 400px) {
+      .card {
+        padding: 22px 18px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Расход топлива на 100 км</h1>
+    <p>Введите пройденное расстояние и потраченное топливо</p>
+  </header>
+
+  <main>
+    <form class="card" id="calcForm" novalidate>
+      <div class="field">
+        <label for="distance">Расстояние, км</label>
+        <input type="number" id="distance" inputmode="decimal" step="any" placeholder="Например, 350" autocomplete="off">
+        <p class="error" id="distanceError"></p>
+      </div>
+
+      <div class="field">
+        <label for="fuel">Израсходовано топлива, л</label>
+        <input type="number" id="fuel" inputmode="decimal" step="any" placeholder="Например, 28" autocomplete="off">
+        <p class="error" id="fuelError"></p>
+      </div>
+
+      <button type="submit">Рассчитать</button>
+
+      <div class="result" id="result" aria-live="polite">
+        <div class="value" id="resultValue"></div>
+        <div class="unit">литров на 100 км</div>
+      </div>
+    </form>
+  </main>
+
+  <footer>
+    Формула: топливо ÷ расстояние × 100
+  </footer>
+
+  <script>
+    const form = document.getElementById('calcForm');
+    const distanceInput = document.getElementById('distance');
+    const fuelInput = document.getElementById('fuel');
+    const distanceError = document.getElementById('distanceError');
+    const fuelError = document.getElementById('fuelError');
+    const result = document.getElementById('result');
+    const resultValue = document.getElementById('resultValue');
+
+    function showError(input, errorEl, message) {
+      input.classList.add('invalid');
+      errorEl.textContent = message;
+      errorEl.classList.add('visible');
+    }
+
+    function clearError(input, errorEl) {
+      input.classList.remove('invalid');
+      errorEl.textContent = '';
+      errorEl.classList.remove('visible');
+    }
+
+    function validate(input, errorEl) {
+      const raw = input.value.trim();
+      if (raw === '') {
+        showError(input, errorEl, 'Заполните это поле');
+        return null;
+      }
+      const num = Number(raw);
+      if (Number.isNaN(num)) {
+        showError(input, errorEl, 'Введите число, например 350 или 28.5');
+        return null;
+      }
+      if (num <= 0) {
+        showError(input, errorEl, 'Значение должно быть больше нуля');
+        return null;
+      }
+      clearError(input, errorEl);
+      return num;
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      const distance = validate(distanceInput, distanceError);
+      const fuel = validate(fuelInput, fuelError);
+
+      if (distance === null || fuel === null) {
+        result.classList.remove('visible');
+        return;
+      }
+
+      const consumption = (fuel / distance) * 100;
+      resultValue.textContent = consumption.toFixed(2).replace('.', ',');
+      result.classList.add('visible');
+    });
+
+    distanceInput.addEventListener('input', () => clearError(distanceInput, distanceError));
+    fuelInput.addEventListener('input', () => clearError(fuelInput, fuelError));
+  </script>
+</body>
+</html>
